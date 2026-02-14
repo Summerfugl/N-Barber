@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ลงทะเบียนสมาชิก - N Barber Salon</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #417ceb; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; color: #333; }
+        .card { background: rgb(245, 245, 245); padding: 40px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 100%; max-width: 380px; text-align: center; border: 1px solid #eee; }
+        .logo { width: 120px; display: block; margin: 0 auto 20px auto; border-radius: 10px; }
+        h2 { font-weight: 500; margin-bottom: 30px; letter-spacing: 0.5px; }
+        input { width: 100%; padding: 15px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; background-color: #f9f9f9; font-family: 'Kanit', sans-serif; }
+        input:focus { outline: none; border-color: #333; background-color: #fff; }
+        button { width: 100%; padding: 15px; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 500; background-color: #1a1a1a; color: white; transition: 0.3s; }
+        button:hover { background-color: #000; transform: translateY(-2px); }
+        button:disabled { background-color: #ccc; transform: none; }
+        
+        /* Modal Popup Design */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 350px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .modal h3 { margin-top: 0; color: #d32f2f; }
+        .modal p { margin: 10px 0; color: #555; text-align: left; padding-left: 20px; }
+        .modal .info-box { background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: left; }
+        .modal .big-id { font-size: 24px; font-weight: bold; color: #333; display: block; text-align: center; margin-top: 10px; }
+        .close-btn { background-color: #ddd; color: #333; margin-top: 10px; }
+        .close-btn:hover { background-color: #ccc; }
+        
+        #status { margin-top: 20px; color: #28a745; font-weight: bold; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <img src="IMG_5525.png" alt="Logo" class="logo">
+    <h2>MEMBER REGISTER</h2>
+    <form id="regForm">
+        <input type="text" id="firstName" placeholder="ชื่อ (First Name)" required>
+        <input type="text" id="lastName" placeholder="นามสกุล (Last Name)" required>
+        <input type="tel" id="phone" placeholder="เบอร์โทรศัพท์" pattern="[0-9]{10}" required>
+        <button type="submit" id="btn">ลงทะเบียน</button>
+    </form>
+    <div id="status"></div>
+</div>
+
+<div class="modal-overlay" id="modal">
+    <div class="modal">
+        <h3>⚠️ ข้อมูลซ้ำ</h3>
+        <p>เบอร์โทรศัพท์นี้เป็นสมาชิกอยู่แล้ว</p>
+        <div class="info-box">
+            <div><strong>ชื่อ:</strong> <span id="mName"></span></div>
+            <div><strong>เบอร์โทร:</strong> <span id="mPhone"></span></div>
+            <div class="big-id">ID: <span id="mID"></span></div>
+        </div>
+        <button class="close-btn" onclick="closeModal()">ปิดหน้าต่าง</button>
+    </div>
+</div>
+
+<script>
+    // 🔴 วาง URL ที่ได้จาก Google Apps Script ตรงนี้ 🔴
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzo7PsqNe-vQKR-UKoofu4RIGZgdzNYXZhbfSjEA3bfeh3F6544cVKPKZa02L-LT8Zoow/exec'; 
+
+    document.getElementById('regForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn');
+        const status = document.getElementById('status');
+        
+        btn.disabled = true;
+        btn.innerText = 'กำลังตรวจสอบ...';
+        status.style.display = 'none';
+
+        const payload = {
+            action: 'register',
+            firstName: document.getElementById('firstName').value,
+            lastName: document.getElementById('lastName').value,
+            phone: document.getElementById('phone').value
+        };
+
+        try {
+            const response = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+
+            if(data.result === 'success') {
+                status.style.display = 'block';
+                status.innerHTML = `✅ สมัครสำเร็จ!<br>รหัสสมาชิก: <span style="font-size:24px; color:#000;">${data.memberID}</span>`;
+                document.getElementById('regForm').reset();
+            } else if (data.result === 'exists') {
+                // แสดง Popup
+                document.getElementById('mName').innerText = data.firstName + ' ' + data.lastName;
+                document.getElementById('mPhone').innerText = data.phone;
+                document.getElementById('mID').innerText = data.memberID;
+                document.getElementById('modal').style.display = 'flex';
+            }
+        } catch (error) {
+            alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'ลงทะเบียน';
+        }
+    });
+
+    function closeModal() {
+        document.getElementById('modal').style.display = 'none';
+        document.getElementById('regForm').reset();
+    }
+</script>
+
+</body>
+</html>
